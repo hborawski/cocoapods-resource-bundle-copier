@@ -1,6 +1,12 @@
 require 'json'
 
 module ResourceBundleCopier
+  class BazelAQuery
+    def self.runQuery(target:, command:)
+      return JSON.parse(`#{command} aquery #{target} --output=jsonproto`)
+    end
+  end
+
   PLUGIN_KEY = "cocoapods-resource-bundle-copier"
   class Copier
     def self.pre_install(installer:)
@@ -59,15 +65,14 @@ module ResourceBundleCopier
 
     def self.getPathsForTarget(options:, target:)
       command = options['bazelCommand'] ||= 'bazel'
-      fullCommand = "#{command} aquery #{target['target']} --output=jsonproto"
-      puts "[Resource Bundle Copier] Running Bazel Query to find output location -> #{fullCommand}"
-      output = `#{fullCommand}`
-      parsed = JSON.parse(output)
 
-      return target['files'].map {|file| Copier.getPathForTarget(queryJson: parsed, file: file) }
+      queryJson = BazelAQuery.runQuery(target: target['target'], command: command)
+
+      return target['files'].map {|file| Copier.getPathForTarget(queryJson: queryJson, file: file) }
     end
 
     def self.getPathForTarget(queryJson:, file:)
+      puts 'getting path'
       fragments = queryJson['pathFragments']
 
       base = fragments.detect {|fragment| fragment['label'] == file}
