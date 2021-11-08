@@ -11,39 +11,46 @@ module ResourceBundleCopier
         rootDir = installer.sandbox.pod_dir(target.name)
         target.spec_consumers.each do |consumer|
           consumer.resource_bundles.keys.each do |key|
+            # Pod Name / Subspec
             fullKey = "#{target.name}/#{key}"
             if not resource_map.key?(fullKey)
               next
             end
-            sourcePath = nil
-            if resource_map[fullKey]['target'].start_with?('//') or resource_map[fullKey]['target'].start_with?('@')
-              puts 'Relies on Bazel Target'
-              sourcePath = Copier.getPathsForTarget(options: options, target: resource_map[fullKey])
+
+            sourcePaths = []
+            if resource_map[fullKey]['target'] != nil
+              puts "[Resource Bundle Copier] #{fullKey} Relies on Bazel Target: #{resource_map[fullKey]['target']}"
+              sourcePaths = Copier.getPathsForTarget(options: options, target: resource_map[fullKey])
             else
-              sourcePath = resource_map[fullKey]['target']
+              sourcePaths = resource_map[fullKey]['files']
             end
-            if sourcePath != nil and File.exists?(sourcePath)
-              puts "[Resource Bundle Copier] Bundle Found for #{fullKey}"
-              destPath = File.join(rootDir, consumer.resource_bundles[key])
-              while File.basename(destPath).include?('*')
-                destPath = File.dirname(destPath)
-              end
-              if File.extname(destPath) == ""
-                FileUtils.mkdir_p(destPath)
-              else
-                FileUtils.mkdir_p(File.dirname(destPath))
-              end
-              if File.directory?(sourcePath)
-                if File.directory?(destPath)
-                  sourcePath = File.join(sourcePath, '.')
+
+            if not sourcePaths.empty?
+              for sourcePath in sourcePaths
+                if File.exists?(sourcePath)
+                  puts "[Resource Bundle Copier] Resource Found for #{fullKey}"
+                  destPath = File.join(rootDir, consumer.resource_bundles[key])
+                  while File.basename(destPath).include?('*')
+                    destPath = File.dirname(destPath)
+                  end
+                  if File.extname(destPath) == ""
+                    FileUtils.mkdir_p(destPath)
+                  else
+                    FileUtils.mkdir_p(File.dirname(destPath))
+                  end
+                  if File.directory?(sourcePath)
+                    if File.directory?(destPath)
+                      sourcePath = File.join(sourcePath, '.')
+                    else
+                      sourcePath = File.join(sourcePath, File.basename(destPath))
+                    end
+                  end
+                  puts "[Resource Bundle Copier] Copying #{sourcePath} to #{destPath}"
+                  FileUtils.cp_r(sourcePath, destPath, remove_destination: true)
                 else
-                  sourcePath = File.join(sourcePath, File.basename(destPath))
+                  puts "[Resource Bundle Copier] Missing Source File: #{sourcePath}"
                 end
               end
-              puts "[Resource Bundle Copier] Copying #{sourcePath} to #{destPath}"
-              FileUtils.cp_r(sourcePath, destPath, remove_destination: true)
-            else
-              puts "Missing Source File: #{resource_map[fullKey]['target']}"
             end
           end
         end
@@ -53,13 +60,18 @@ module ResourceBundleCopier
     def self.getPathsForTarget(options:, target:)
       command = options['bazelCommand'] ||= 'bazel'
       fullCommand = "#{command} aquery #{target['target']} --output=jsonproto"
-      puts "Running Bazel Query to find output location -> #{fullCommand}"
+      puts "[Resource Bundle Copier] Running Bazel Query to find output location -> #{fullCommand}"
       output = `#{fullCommand}`
       parsed = JSON.parse(output)
-      fragments = parsed['pathFragments']
 
-      base = fragments.detect {|fragment| fragment['label'] == target['file']}
-      pathSegments = [target['file']]
+      return target['files'].map {|file| Copier.getPathForTarget(queryJson: parsed, file: file) }
+    end
+
+    def self.getPathForTarget(queryJson:, file:)
+      fragments = queryJson['pathFragments']
+
+      base = fragments.detect {|fragment| fragment['label'] == file}
+      pathSegments = [file]
       parentId = base['parentId']
 
       while parentId != nil
@@ -71,7 +83,7 @@ module ResourceBundleCopier
       while not File.exists?(pathSegments.join('/'))
         pathSegments.prepend('..')
       end
-      puts "Found resource for Bazel target: #{pathSegments.join('/')}"
+      puts "[Resource Bundle Copier] Found resource for Bazel target: #{pathSegments.join('/')}"
       return pathSegments.join('/')
     end
   end
