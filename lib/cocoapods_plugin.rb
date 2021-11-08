@@ -14,7 +14,9 @@ module Pod
     unbound_method = instance_method(method_name)
     remove_method(method_name)
     define_method(method_name) do
-      ResourceBundleCopier::Copier.pre_install(installer: self)
+      if ENV["BAZEL_POD_INSTALL"] == nil
+        ResourceBundleCopier::Copier.pre_install(installer: self)
+      end
       unbound_method.bind(self).call
     end
   end
