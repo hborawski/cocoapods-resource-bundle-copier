@@ -36,23 +36,6 @@ module ResourceBundleCopier
                 if File.exists?(sourcePath)
                   puts "[Resource Bundle Copier] Resource Found for #{fullKey}"
                   destPath = File.join(rootDir, consumer.resource_bundles[key])
-                  # while File.basename(destPath).include?('*')
-                  #   destPath = File.dirname(destPath)
-                  # end
-                  # if File.extname(destPath) == ""
-                  #   FileUtils.mkdir_p(destPath)
-                  # else
-                  #   FileUtils.mkdir_p(File.dirname(destPath))
-                  # end
-                  # if File.directory?(sourcePath)
-                  #   if File.directory?(destPath)
-                  #     sourcePath = File.join(sourcePath, '.')
-                  #   else
-                  #     sourcePath = File.join(sourcePath, File.basename(destPath))
-                  #   end
-                  # end
-                  # puts "[Resource Bundle Copier] Copying #{sourcePath} to #{destPath}"
-                  # FileUtils.cp_r(sourcePath, destPath, remove_destination: true)
                   self.copyFile(source: sourcePath, dest: destPath)
                 else
                   puts "[Resource Bundle Copier] Missing Source File: #{sourcePath}"
