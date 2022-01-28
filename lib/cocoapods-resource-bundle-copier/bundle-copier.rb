@@ -10,7 +10,7 @@ module ResourceBundleCopier
   PLUGIN_KEY = "cocoapods-resource-bundle-copier"
   class Copier
     def self.pre_install(installer:)
-      options = installer.podfile.plugins[PLUGIN_KEY]
+      options = installer.podfile.plugins[PLUGIN_KEY] ||= {}
       resource_map = options['resource_map'] ||= {}
       puts "[Resource Bundle Copier] Running"
       installer.development_pod_targets.each do |target|
