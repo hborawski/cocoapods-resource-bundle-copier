@@ -27,6 +27,10 @@ module ResourceBundleCopier
             if resource_map[fullKey]['target'] != nil
               puts "[Resource Bundle Copier] #{fullKey} Relies on Bazel Target: #{resource_map[fullKey]['target']}"
               sourcePaths = Copier.getPathsForTarget(options: options, target: resource_map[fullKey])
+            elsif resource_map[fullKey]['targets'] != nil
+              sourcePaths = resource_map[fullKey]['targets'].flat_map { |target|
+                Copier.getPathsForTarget(options: options, target: target)
+              }
             else
               sourcePaths = resource_map[fullKey]['files']
             end
