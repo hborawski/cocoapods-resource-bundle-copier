@@ -39,7 +39,9 @@ module ResourceBundleCopier
               for sourcePath in sourcePaths
                 if File.exists?(sourcePath)
                   puts "[Resource Bundle Copier] Resource Found for #{fullKey}"
-                  destPath = File.join(rootDir, consumer.resource_bundles[key])
+                  pattern = consumer.resource_bundles[key]
+                  path = pattern.kind_of?(Array) ? pattern[0] : pattern
+                  destPath = File.join(rootDir, path)
                   self.copyFile(source: sourcePath, dest: destPath)
                 else
                   puts "[Resource Bundle Copier] Missing Source File: #{sourcePath}"
